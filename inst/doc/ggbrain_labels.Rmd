@@ -1,0 +1,57 @@
+---
+title: "Working with annotations and labels in ggbrain"
+author: "Michael Hallquist"
+date: "26 Oct 2022"
+output: 
+  html_document:
+  rmarkdown::html_vignette:
+vignette: >
+  %\VignetteIndexEntry{Working with annotations and labels in ggbrain}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggbrain)
+library(ggplot2)
+library(patchwork)
+library(RNifti)
+
+# MNI 2009c anatomical underlay
+underlay_3mm <- system.file("extdata", "mni_template_2009c_3mm.nii.gz", package = "ggbrain")
+
+# Schaefer 200-parcel atlas of cortex
+schaefer200_atlas_3mm <- system.file("extdata", "Schaefer_200_7networks_2009c_3mm.nii.gz", package = "ggbrain")
+```
+
+# Categorical images in ggbrain
+
+Many visualizations of brain data rely on continuous-valued images containing intensities or statistics. For example, we might wish to visualize the *z*-statistics of a general linear model.
+
+Yet, there are often images that contain integers, where unique values represent a priori regions of interest or clusters identified using familywise error correction methods. Brain atlases are a common example of integer-valued images. Here we demonsrate the cortical parcellation developed by Schaefer and colleagues (2018).
+
+Schaefer, A., Kong, R., Gordon, E. M., Laumann, T. O., Zuo, X.-N., Holmes, A. J., Eickhoff, S. B., & Yeo, B. T. T. (2018). Local-global parcellation of the human cerebral cortex from intrinsic functional connectivity MRI. *Cerebral Cortex, 28*, 3095-3114.
+
+As you can see, this version of the atlas contains 200 cortical parcels.
+
+```{r}
+schaefer_img <- readNifti(schaefer200_atlas_3mm)
+sort(unique(as.vector(schaefer_img)))
+```
+
+At a basic level, we can visualize this image in the same way as continuous images, as described in ![ggbrain_introduction.html].
+
+```{r}
+gg_obj <- ggbrain() +
+  images(c(underlay = underlay_3mm, atlas = schaefer200_atlas_3mm)) +
+  slices(c("z = 30", "z=40")) +
+  geom_brain(definition = "underlay") +
+  geom_brain(definition = "atlas")
+
+plot(gg_obj)
+```
+
+As we can see, however, the continuous values represent discrete parcels in the atlas. Thus, we may wish to use a categorical/discrete color scale to visualize things.
+
