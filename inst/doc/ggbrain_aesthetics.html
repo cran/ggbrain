@@ -298,23 +298,17 @@ overflow-y: auto;
 border: 1px solid #ddd;
 border-radius: 4px;
 }
-.tabset-dropdown > .nav-tabs > li.active:before {
-content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+content: "\e259";
 font-family: 'Glyphicons Halflings';
 display: inline-block;
 padding: 10px;
 border-right: 1px solid #ddd;
 }
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-content: "";
-border: none;
-}
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-content: "";
+content: "\e258";
 font-family: 'Glyphicons Halflings';
-display: inline-block;
-padding: 10px;
-border-right: 1px solid #ddd;
+border: none;
 }
 .tabset-dropdown > .nav-tabs > li.active {
 display: block;
@@ -384,10 +378,10 @@ echange_overlay_3mm &lt;- system.file(&quot;extdata&quot;, &quot;echange_overall
 schaefer200_atlas_3mm &lt;- system.file(&quot;extdata&quot;, &quot;Schaefer_200_7networks_2009c_3mm.nii.gz&quot;, package = &quot;ggbrain&quot;)
 
 print(c(underlay_3mm, decision_onset_3mm, echange_overlay_3mm, schaefer200_atlas_3mm))</code></pre>
-<pre><code>## [1] &quot;/private/var/folders/y0/pkh_h_511bn27zjj8m0w2wx00000gn/T/RtmpAD6adc/Rinsta14a21951453/ggbrain/extdata/mni_template_2009c_3mm.nii.gz&quot;          
-## [2] &quot;/private/var/folders/y0/pkh_h_511bn27zjj8m0w2wx00000gn/T/RtmpAD6adc/Rinsta14a21951453/ggbrain/extdata/decision_onset_zstat_3mm.nii.gz&quot;        
-## [3] &quot;/private/var/folders/y0/pkh_h_511bn27zjj8m0w2wx00000gn/T/RtmpAD6adc/Rinsta14a21951453/ggbrain/extdata/echange_overall_zstat_3mm.nii.gz&quot;       
-## [4] &quot;/private/var/folders/y0/pkh_h_511bn27zjj8m0w2wx00000gn/T/RtmpAD6adc/Rinsta14a21951453/ggbrain/extdata/Schaefer_200_7networks_2009c_3mm.nii.gz&quot;</code></pre>
+<pre><code>## [1] &quot;/private/var/folders/y0/pkh_h_511bn27zjj8m0w2wx00000gn/T/Rtmpv6gHgC/Rinst5aba1fc64864/ggbrain/extdata/mni_template_2009c_3mm.nii.gz&quot;          
+## [2] &quot;/private/var/folders/y0/pkh_h_511bn27zjj8m0w2wx00000gn/T/Rtmpv6gHgC/Rinst5aba1fc64864/ggbrain/extdata/decision_onset_zstat_3mm.nii.gz&quot;        
+## [3] &quot;/private/var/folders/y0/pkh_h_511bn27zjj8m0w2wx00000gn/T/Rtmpv6gHgC/Rinst5aba1fc64864/ggbrain/extdata/echange_overall_zstat_3mm.nii.gz&quot;       
+## [4] &quot;/private/var/folders/y0/pkh_h_511bn27zjj8m0w2wx00000gn/T/Rtmpv6gHgC/Rinst5aba1fc64864/ggbrain/extdata/Schaefer_200_7networks_2009c_3mm.nii.gz&quot;</code></pre>
 <div id="converting-to-a-ggplot-object-and-displaying-the-plot" class="section level2">
 <h2>Converting to a ggplot object and displaying the plot</h2>
 <p>For reasons that are somewhat boring (having to do with how R handles
