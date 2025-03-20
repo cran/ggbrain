@@ -1,3 +1,20 @@
+# ggbrain 0.8.2 (DEVELOPMENT)
+
+* notice: annotate_panel is now called annotate_slice for consistency
+* notice: the plot() method now works with rendered and un-rendered objects, always drawing to the current graphics device
+* feature: Support use of label columns in contrast specification
+* feature: Support use of inline factor() specification in aes() for a `geom_outline` or `geom_brain` layer
+* feature: If layer definition uses := syntax, use the lefthand side as the layer name when no name is provided
+* bugfix: Allow for quantile "q" specifications for label position that can be 1-100 (percentile) or 0-1 (quantile)
+* bugfix: Do not throw error when contrast specification includes equals sign (logical tests)
+* bugfix: Only use := syntax for naming contrasts. For compound contrast expressions, use <value> = <expr>; <value2> = <expr2>
+* bugfix: Pass through label_columns as attribute from inline contrast definitions of the form <value> = <expr>
+* bugfix: Handle fixed fill in ggbrain_layers when alpha < 1
+* bugfix: retain the order of ordered factors in labels when `unify_scales = TRUE`
+* bugfix: copy through label columns for simple subset contrasts
+* bugfix: extend background color rectangle to cover entire plot when legend is large
+* bugfix: support ggplot2 3.5.0+, working around collision with ggnewscale for categorical images
+
 # ggbrain 0.8.1 (21Mar2023)
 
 * feature: `ggbrain` objects can be added together, allowing common parts across plots to be reused

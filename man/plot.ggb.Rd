@@ -2,15 +2,21 @@
 % Please edit documentation in R/ggb.R
 \name{plot.ggb}
 \alias{plot.ggb}
-\title{S3 method to allow for plot() syntax with ggbrain (ggb) objects}
+\title{S3 method to allow for plot(x) syntax with ggbrain (ggb) objects}
 \usage{
 \method{plot}{ggb}(x, ...)
 }
 \arguments{
 \item{x}{the \code{ggb} object to be plotted}
 
-\item{...}{additional argument passed to the plot method}
+\item{...}{additional arguments passed to the plot method}
+}
+\value{
+NULL, invisibly
 }
 \description{
-S3 method to allow for plot() syntax with ggbrain (ggb) objects
+S3 method to allow for plot(x) syntax with ggbrain (ggb) objects
+}
+\details{
+This will plot the ggbrain object to the current graphics device
 }

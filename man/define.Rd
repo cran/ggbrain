@@ -28,13 +28,13 @@ downstream layers to further modify the contrast, such as when we compute a
 }
 \examples{
   # T1-weighted template
-  t1 <- system.file("extdata", "mni_template_2009c_3mm.nii.gz", package = "ggbrain")
+  t1 <- system.file("extdata", "mni_template_2009c_2mm.nii.gz", package = "ggbrain")
 
   # signed reward prediction error map
-  signed_pe <- system.file("extdata", "pe_ptfce_fwep_0.05.nii.gz", package = "ggbrain")
+  signed_pe <- system.file("extdata", "pe_ptfce_fwep_0.05_2mm.nii.gz", package = "ggbrain")
 
   # unsigned (absolute value) prediction error map
-  abspe <- system.file("extdata", "abspe_ptfce_fwep_0.05.nii.gz", package = "ggbrain")
+  abspe <- system.file("extdata", "abspe_ptfce_fwep_0.05_2mm.nii.gz", package = "ggbrain")
 
   # simple example of a difference contrast, separating definition from usage in geom_brain
   gg_obj <- ggbrain() +
@@ -49,20 +49,20 @@ downstream layers to further modify the contrast, such as when we compute a
     slices(c("x = 25\%", "x = 75\%")) +
     define(c(signed_gt_abs = "signed_pe - abspe")) +
     geom_brain("signed_gt_abs")
-    
+
   # contrast definitions can also occur inline, yielding equivalent plots
   gg_obj <- ggbrain() +
     images(c(underlay = t1, signed_pe = signed_pe, abspe = abspe)) +
     slices(c("x = 25\%", "x = 75\%")) +
     geom_brain("signed_pe - abspe")
-    
+
   # The use of contrasts() is helpful when layers modify the contrast (e.g., subsetting)
   gg_obj <- ggbrain() +
     images(c(underlay = t1, signed_pe = signed_pe, abspe = abspe)) +
     slices(c("x = 25\%", "x = 75\%")) +
     define(c(signed_gt_abs = "signed_pe - abspe")) +
     geom_brain(
-      "signed_gt_abs[signed_gt_abs > 0]", 
+      "signed_gt_abs[signed_gt_abs > 0]",
       fill_scale=ggplot2::scale_fill_distiller("Pos diff", palette = "Reds")
     )
 }

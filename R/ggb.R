@@ -124,15 +124,15 @@ ggb <- R6::R6Class(
     #' @description add contrast definitions to the plot object
     #' @param contrasts a character vector of contrasts to compute as part of the plot generation
     add_contrasts = function(contrasts) {
-      
+
       if (checkmate::test_character(contrasts)) {
         contrasts <- as.list(contrasts) # convert to list for type consistency
       }
-      
+
       # for testing
       #contrasts <- c(x="a - b", "diff := a*b", c="x := y + z", "t + j")
       #contrasts <- c(x="a - b", "diff := a*b") #, c="x := y + z")
-      has_names <- sapply(seq_along(contrasts), function(i) { checkmate::test_named(contrasts[i]) })
+      has_names <- sapply(seq_along(contrasts), function(i) checkmate::test_named(contrasts[i]) )
       if (any(has_names)) {
         # verify that the named arguments don't use := operator
         nm <- contrasts[has_names]
@@ -146,27 +146,25 @@ ggb <- R6::R6Class(
           }
         })
       }
-        
+
       if (any(!has_names)) {
         un <- contrasts[!has_names]
         un <- lapply(seq_along(un), function(i) {
-          if (!grepl("^\\s*\\w+\\s*:=.*$", un[i], perl = TRUE)) {
+          if (!grepl("^\\s*[\\w.]+\\s*:=.*$", un[[i]], perl = TRUE)) {
             stop(glue::glue(
               "Contrasts must either use the named form c(nm='con def')",
               "or the := operator: 'nm := con def'.",
-              " Problem with '{un[i]}'"
+              " Problem with '{un[[i]]}'"
             ))
           } else {
-            con_name <- sub("^\\s*(\\w+)\\s*:=.*$", "\\1", un[i], perl = TRUE) # parse name
-            con_val <- trimws(sub("^\\s*\\w+\\s*:=\\s*(.*)$", "\\1", un[i], perl = TRUE)) # parse contrast
-            return(c(con_name, con_val))
+            return(contrast_split(un[[i]]))
           }
         })
-        
+
         contrasts[!has_names] <- lapply(un, "[[", 2) # retain contrast definitions as value (named list)
         names(contrasts)[!has_names] <- sapply(un, "[[", 1) # use first element (contrast name) as list names
       }
-      
+
       self$ggb_contrasts <- c(self$ggb_contrasts, contrasts)
       return(self)
     },
@@ -218,7 +216,11 @@ ggb <- R6::R6Class(
       }
 
       sapply(label_args, function(x) checkmate::assert_data_frame(x) )
-      sapply(label_args, function(x) checkmate::assert_subset(c("value"), names(x)))
+      sapply(label_args, function(x) {
+        if (!checkmate::test_subset(c("value"), names(x))) {
+          stop("Labels data.frame must contain a 'value' column corresponding to the numeric image values to be labeled")
+        }
+      })
 
       self$ggb_image_labels <- c(self$ggb_image_labels, label_args)
       return(self)
@@ -266,18 +268,8 @@ ggb <- R6::R6Class(
 
       # compute any contrasts requested
       if (any(is_contrast)) {
-        # allow for definitions of the form "con1 := overlay*2"
-        inline_contrasts <- lapply(layer_defs[is_contrast], function(x) {
-          if (grepl("^\\s*\\w+\\s*:=.*$", x, perl = TRUE)) {
-            con_name <- sub("^\\s*(\\w+)\\s*:=.*$", "\\1", x, perl = TRUE) # parse name
-            con_val <- trimws(sub("^\\s*\\w+\\s*:=\\s*(.*)$", "\\1", x, perl = TRUE)) # parse contrast
-          } else {
-            con_name <- ""
-            con_val <- x
-          }
-
-          return(c(name = con_name, value = con_val))
-        })
+        # allow for definitions of the form "con1 := overlay*2" -- split at the :=
+        inline_contrasts <- lapply(layer_defs[is_contrast], contrast_split)
 
         con_names <- sapply(inline_contrasts, "[[", "name")
         con_names[con_names == ""] <- make.unique(rep("con", sum(con_names == "")))
@@ -303,11 +295,14 @@ ggb <- R6::R6Class(
       self$ggb_plot$annotations <- self$ggb_annotations # pass through annotations
       self$ggb_plot$region_labels <- self$ggb_region_labels # pass through region labels
       self$ggb_plot$generate_plot()
+      
+      # call the ggbrain_plot $plot method to convert to a patchwork object
+      g <- self$ggb_plot$plot(guides)
 
-      return(self$ggb_plot$plot(guides))
+      return(g)
     },
 
-    #' @description plot this ggb object
+    #' @description plot this ggb object -- just an alias for render
     #' @param guides Passes through to patchwork::plot_layout to control how legends are combined across plots. The default
     #'   is "collect", which collects legends within a given nesting level (removes duplicates).
     #' @details requires that required elements are in place already.
@@ -319,13 +314,52 @@ ggb <- R6::R6Class(
   )
 )
 
-#' S3 method to allow for plot() syntax with ggbrain (ggb) objects
+#' S3 method to allow for plot(x) syntax with ggbrain (ggb) objects
+#' 
 #' @param x the \code{ggb} object to be plotted
-#' @param ... additional argument passed to the plot method
+#' @param ... additional arguments passed to the plot method
+#' @details
+#'   This will plot the ggbrain object to the current graphics device
+#' @return NULL, invisibly
 #' @export
 plot.ggb <- function(x, ...) {
-  x$plot()
+  p <- x$plot(...) # convert to ggbrain_patchwork object
+  if (!is.null(p)) plot(p, ...) # pass through to ggbrain_patchwork plotting function (that handles background color)
+  invisible(p) # return the ggbrain_patchwork object, for further modification -- matches ggplot2 approach
 }
+
+#' S3 method to allow for render(x) syntax with ggbrain (ggb) objects
+#' 
+#' @param x the \code{ggb} object to be rendered to a \code{ggbrain_patchwork} object
+#' @param ... additional arguments passed to the render method
+#' @return the ggbrain_patchwork object that can be handed off to patchwork and ggplot2
+#'   functions.
+#' @export
+render.ggb <- function(x, ...) {
+  p <- x$render(...)
+  invisible(p)
+}
+
+#' S3 method to allow for plot() syntax with rendered ggbrain patchwork objects
+#' 
+#' @param x the \code{ggbrain_patchwork} object to be plotted
+#' @param ... additional arguments. Not currently used
+#' @return \code{patchworkGrob} object, invisibly
+#' @importFrom grid grid.newpage grid.rect grid.draw gpar
+#' @importFrom patchwork patchworkGrob
+#' @export
+plot.ggbrain_patchwork <- function(x, ...) {
+  grid.newpage()
+  grid.rect(gp = gpar(fill = x$theme$plot.background$fill, col = NA))  # use plot background from object
+  grob_obj <- patchworkGrob(x)
+  grid.draw(grob_obj)  # Draws the plot on top of the background rectangle
+  invisible(grob_obj) # return the patchwork grob in case it's of interest
+}
+
+#' default S3 method for ggbrain_patchwork objects (post-render)
+#' @rdname plot.ggbrain_patchwork
+#' @export
+print.ggbrain_patchwork <- plot.ggbrain_patchwork
 
 #' addition operator for ggb object to support ggplot-like syntax
 #' @param o1 the first object inheriting the ggb class
@@ -350,12 +384,12 @@ plot.ggb <- function(x, ...) {
     # single action in an add step
     actions <- o2$action
   }
-  
+
   if (is.null(actions)) return(o1) #nothing to do
-  
+
   oc <- o1$clone(deep = TRUE)
   oc$action <- NULL # always make sure no action is needed in combined object
-  
+
   for (aa in actions) {
     if (aa == "add_slices") {
       oc$add_slices(o2$ggb_slices)

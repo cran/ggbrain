@@ -1,9 +1,9 @@
 #' R6 class for a single layer of a ggbrain panel
-#' @details 
+#' @details
 #'   Note that this class is exported only for power users and rarely needs to be called directly
 #'     in typical use of the package. Instead, look at geom_brain() and geom_outline().
 #' @importFrom checkmate assert_data_frame assert_class assert_numeric assert_logical
-#' @importFrom ggplot2 scale_fill_gradient scale_fill_distiller .pt aes aes_string geom_raster
+#' @importFrom ggplot2 scale_fill_gradient scale_fill_distiller .pt aes aes_string geom_raster guides
 #'   guide_colorbar
 #' @importFrom ggnewscale new_scale_fill
 #' @importFrom Matrix sparseMatrix
@@ -21,6 +21,7 @@ ggbrain_layer <- R6::R6Class(
     pvt_data = NULL, # the data.frame containing values for this layer
     pvt_mapping = NULL, # how to map the data columns to the display
 
+    pvt_fill_expr = "{new_val}", # expression for aes(fill=) that modifies pvt_fill_column, such as aes(fill=factor(value))
     pvt_fill_column = NULL, # the column within pvt_data containing the values to be mapped to the fill aesthetic in geom_raster
     pvt_fill_scale = NULL, # a ggplot2 scale_fill* object for the layer fill
     pvt_fill = NULL, # the fixed color (string) of the color to use on the fill layer -- setting, not mapping
@@ -117,7 +118,7 @@ ggbrain_layer <- R6::R6Class(
     # modify layer data to remove specks, fill holes, and trim threads
     refine_image = function() {
       d <- private$pvt_data
-      lab_cols <- attr(d, "label_cols")
+      label_columns <- attr(d, "label_columns")
       dmat <- df2mat(d, replace_na = 0) # convert NAs to zero prior to image processing
       na_rows <- rep(FALSE, nrow(d))
       vcols <- grep("dim1|dim2", names(d), value = TRUE, invert = TRUE)
@@ -126,14 +127,14 @@ ggbrain_layer <- R6::R6Class(
       if (private$pvt_fill_holes > 0L) {
         dmat <- private$fill_img_holes(dmat, size = private$pvt_fill_holes, neighbors = 10)
         d <- mat2df(dmat, na_zeros = TRUE) # convert back to modified data frame
-        attr(d, "label_cols") <- lab_cols
+        attr(d, "label_columns") <- label_columns
 
         # need to fill any ancillary columns with imputed values, too!
-        if (!is.null(lab_cols)) {
+        if (!is.null(label_columns)) {
           lab_df <- private$pvt_data %>%
             dplyr::group_by(value) %>%
             dplyr::filter(dplyr::row_number() == 1L & !is.na(value)) %>%
-            dplyr::select(value, !!lab_cols)
+            dplyr::select(value, !!label_columns)
 
           d <- d %>% left_join(lab_df, by="value")
         }
@@ -160,7 +161,7 @@ ggbrain_layer <- R6::R6Class(
         # leading to unintended removal of 'specks' from the lower-level variable.
         if (isTRUE(private$pvt_categorical_fill) && private$pvt_fill_column != "value") {
           # create a data.frame where the value column contains the integer values of the correct fill variable
-          d_tmp <- d %>% 
+          d_tmp <- d %>%
             dplyr::select(-value) %>%
             dplyr::rename(value=!!private$pvt_fill_column) %>%
             dplyr::mutate(value=as.integer(as.factor(value)))
@@ -168,7 +169,7 @@ ggbrain_layer <- R6::R6Class(
         } else {
           to_process <- dmat
         }
-        
+
         specks <- private$find_specks(to_process, size = private$pvt_remove_specks, by_roi = private$pvt_categorical_fill)
         if (any(specks)) {
           dmat[specks] <- 0 # probably a waste of CPU time -- dmat isn't used again
@@ -198,7 +199,7 @@ ggbrain_layer <- R6::R6Class(
       }
 
       if (!is.null(fill_scale)) {
-        # mapped fill layer
+        # mapped fill layer -- for the multiple fill scale approach to work, column names need to be unique across layers (value1, value2, etc.)
         new_val <- paste0("value", n_layers + 1L)
         df <- df %>% dplyr::rename(!!new_val := !!value_col)
         if (n_layers > 0L) {
@@ -206,24 +207,48 @@ ggbrain_layer <- R6::R6Class(
           gg <- gg + ggnewscale::new_scale_fill()
         }
 
+        # evaluate fill expression and pass forward to aes as character
+        fill_expr <- sub("{new_val}", new_val, private$pvt_fill_expr, fixed=TRUE)
+
         raster_args$data <- df
-        raster_args$mapping <- ggplot2::aes_string(x = "dim1", y = "dim2", fill = new_val, alpha = private$pvt_alpha_column)
-        # Based on weird ggplot2 + ggnewscale bug, only set show.legend when it is FALSE to avoid legend collisions
-        # https://github.com/eliocamp/ggnewscale/issues/32
-        if (isFALSE(private$pvt_show_legend)) raster_args$show.legend <- private$pvt_show_legend
+        raster_args$mapping <- ggplot2::aes_string(x = "dim1", y = "dim2", fill = fill_expr, alpha = private$pvt_alpha_column)
+        raster_args$show.legend <- c(fill = private$pvt_show_legend, suppress_garbage = NA) # random fix to not blacken lower layers
       } else {
         # fixed fill layer -- always need to drop NAs from data because when fill is *set* (not mapped), any row in the
         # data.frame will be filled with the specified color.
         raster_args$data <- subset(df, !is.na(value))
         raster_args$mapping <- ggplot2::aes_string(x = "dim1", y = "dim2", fill = NULL, alpha = private$pvt_alpha_column)
         raster_args$fill <- private$pvt_fill
-        raster_args$show.legend <- FALSE
+        raster_args$show.legend <- c(fill=FALSE)
       }
+      
+      raster_args$na.rm <- TRUE # suppress warnings about missing data
 
       robj <- do.call(geom_raster, raster_args)
       # robj <- do.call(geom_tile, raster_args) # for comparison re: warnings about uneven intervals
+      
       gg <- gg + robj + fill_scale
+      
+      # cleanup psychotic collision of 2 bugs: show.legend = TRUE is needed to show all levels of a factor
+      # and show.legend should be left unset for TRUE layers and set only for FALSE layers to eliminate some guides in ggnewscale
+      # Based on weird ggplot2 + ggnewscale bug, only set show.legend when it is FALSE to avoid legend collisions:
+      # https://github.com/eliocamp/ggnewscale/issues/32
+      # This conflicts with a different bug, where if we don't set show.legend to TRUE, then we get swiss cheese legends depending on
+      # what levels are present for a given slice/plot: https://github.com/tidyverse/ggplot2/issues/5996
+      #
+      # Feb 2025: This is even wilder than anticipated: https://stackoverflow.com/questions/79410493/getting-multiple-fill-with-categorical-data-to-display-using-ggplot2-3-5-0
+      # The predictable solution (for now) is to use guides(<x>="none"), as below, mixed with a named show.legend argument to geom_*, including
+      # an irrelevant fill_made_up=NA.
 
+      # use the show.legend property of the guides to decide which guides to suppress
+      # then use guides(<x>="none") to suppress any guides that have been inadvertently reintroduced by upstream bugs
+      show <- sapply(gg$layers, function(layer) layer$show.legend["fill"])
+      if (any(show==FALSE)) {
+        scale_names <- sapply(gg$scales$scales, function(x) x$aesthetics)
+        noshow <- scale_names[!show]
+        gg <- gg + do.call(ggplot2::guides, sapply(noshow, function(i) "none", USE.NAMES=TRUE, simplify = FALSE))
+      }
+      
       return(gg)
     },
 
@@ -335,8 +360,16 @@ ggbrain_layer <- R6::R6Class(
           private$pvt_has_fill <- TRUE # we have a fill geom
           private$pvt_map_fill <- TRUE # map fill color to data
 
-          # if fill column is character or factor, then fill is categorical
-          private$pvt_categorical_fill <- ifelse(checkmate::test_multi_class(private$pvt_data[[private$pvt_fill_column]], c("character", "factor")), TRUE, FALSE)
+          fcol_cat <- inherits(private$pvt_data[[private$pvt_fill_column]], c("character", "factor", "ordered"))
+
+          # if layer does not already believe that fill is categorical column, but the fill column in the data is categorical, set to TRUE
+          if (!isTRUE(private$pvt_categorical_fill)) {
+            # if fill column is character or factor, then fill is categorical
+            private$pvt_categorical_fill <- fcol_cat
+          } else if (!fcol_cat) {
+            # Fill is supposed to be categorical, but column is not a categorical data type. Convert to factor
+            private$pvt_data[[private$pvt_fill_column]] <- factor(private$pvt_data[[private$pvt_fill_column]])
+          }
         }
       }
 
@@ -390,7 +423,6 @@ ggbrain_layer <- R6::R6Class(
       # detect appropriate default scale
       if (private$pvt_definition == "underlay") {
         self$fill_scale <- scale_fill_gradient(low = "grey8", high = "grey92")
-        self$show_legend <- FALSE # default to hiding underlay scale
       } else {
         has_pos <- any(private$pvt_data$value > 0, na.rm = TRUE)
         has_neg <- any(private$pvt_data$value < 0, na.rm = TRUE)
@@ -633,7 +665,11 @@ ggbrain_layer <- R6::R6Class(
       show_legend = TRUE, interpolate = NULL, unify_scales=TRUE, alpha = NULL, blur_edge = NULL,
       fill_holes = NULL, remove_specks = NULL, trim_threads = NULL, data = NULL) {
 
-      if (is.null(name)) name <- "layer"
+      # if name is NULL, see if layer is named through the definition field using <name> := <value>
+      if (is.null(name)) {
+        # look at definition and use the name before := as layer name if available. Otherwise, use "layer".
+        name <- contrast_split(definition, no_name = "layer")$name
+      }
       checkmate::assert_numeric(limits, len = 2L, null.ok = TRUE)
       checkmate::assert_logical(interpolate, len=1L, null.ok = TRUE)
 
@@ -774,13 +810,13 @@ ggbrain_layer <- R6::R6Class(
           # if bisided has both positive and negative layers/data, we need to control color bar order
           if (isTRUE(private$pvt_show_legend) && has_df && has_pos_df) {
             # force color bar order: +1 is negative, +2 is positive. Lower orders are positioned lower on legend
-            ret$scales$scales[[n_scales + 1]]$guide <- guide_colorbar(order = n_scales + 2, available_aes = c("fill", "fill_new"))
-            ret$scales$scales[[n_scales + 2]]$guide <- guide_colorbar(order = n_scales + 1, available_aes = c("fill", "fill_new"))
+            ret$scales$scales[[n_scales + 1]]$guide <- guide_colorbar(order = n_scales + 2, available_aes = c("any")) #available_aes = c("fill", "fill_new"))
+            ret$scales$scales[[n_scales + 2]]$guide <- guide_colorbar(order = n_scales + 1, available_aes = c("any")) #available_aes = c("fill", "fill_new"))
           }
         }
       } else {
-        # fixed fill color
-        ret <- private$add_raster(ret, df, value_col = NULL, n_layers, raster_args, fill_scale = NULL)
+        # fixed fill color (drop scale)
+        ret <- private$add_raster(ret, df, pdata$vcol, n_layers, raster_args, fill_scale = NULL)
       }
 
       return(ret)

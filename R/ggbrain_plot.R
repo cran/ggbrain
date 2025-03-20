@@ -278,10 +278,21 @@ ggbrain_plot <- R6::R6Class(
       # get a list of the same length as the slice data that contains annotations for each slice
       all_annotations <- private$compiled_annotations()
 
+      # handle inline specification of categorical fill layers by passing through additional labels columns to get_uvals
+      f_cat <- sapply(layers, "[[", "categorical_fill")
+      if (any(f_cat)) {
+        ll <- list()
+        f_cols <- sapply(layers, "[[", "fill_column")
+        f_src <- sapply(layers, "[[", "source")
+        for (pos in which(f_cat)) ll[[f_src[pos]]] <- unname(f_cols[pos])
+      } else {
+        ll <- NULL
+      }
+
       # lookup ranges of each layer and unique values of labels
       img_ranges <- private$pvt_slices$get_ranges(slice_indices)
-      img_uvals <- private$pvt_slices$get_uvals(slice_indices)
-
+      img_uvals <- private$pvt_slices$get_uvals(slice_indices, add_labels = ll)
+      
       # generate a list of panel objects that combine layers and slice data
       private$pvt_ggbrain_panels <- lapply(seq_len(nrow(slice_df)), function(i) {
         # match slice data with layers
@@ -291,19 +302,27 @@ ggbrain_plot <- R6::R6Class(
         # list of layers
         slc_layers <- lapply(seq_along(layers), function(j) {
           l_obj <- layers[[j]]$clone(deep = TRUE)
-          df <- comb_data[[j]]
-          l_obj$data <- df # set slice-specific data (this will also set properties such as whether fill layer is categorical)
+          l_obj$data <- comb_data[[j]] # set slice-specific data (this will also set properties such as whether fill layer is categorical)
+          if (isTRUE(l_obj$categorical_fill)) l_obj$fill_scale$na.translate <- FALSE # don't park "NA" in legend for empty tiles
 
           if (isTRUE(l_obj$unify_scales)) {
             if (isTRUE(l_obj$categorical_fill)) {
               f_col <- l_obj$fill_column
+
               # unify factor levels across slices
               f_levels <- img_uvals %>%
-                filter(layer == !!l_obj$source & .label_col == !!f_col) %>%
-                pull(uvals)
-              l_obj$data[[f_col]] <- factor(l_obj$data[[f_col]], levels = f_levels)
+                dplyr::filter(layer == !!l_obj$source & .label_col == !!f_col) %>%
+                dplyr::pull(uvals)
+
+              # For now, don't attempt to unify ordered types since this will mangle the order.
+              # This should work as expected because levels are preserved for labeled data.
+              # I think this may only be essential for inline factor coding in aes and that it may only be a problem because we factor() the
+              # label column in $validate_layer(), rather than setting the factor at the overall image level prior to slicing.
+              if (!is.ordered(l_obj$data[[f_col]])) {
+                l_obj$data[[f_col]] <- factor(l_obj$data[[f_col]], levels = f_levels)
+              }
+
               l_obj$fill_scale$drop <- FALSE # don't drop unused levels (would break unified legend)
-              l_obj$fill_scale$na.translate <- FALSE
             } else {
               if (isTRUE(l_obj$bisided)) {
                 pos_lims <- img_ranges %>%
@@ -329,7 +348,7 @@ ggbrain_plot <- R6::R6Class(
 
           return(l_obj)
         })
-        
+
         if (!is.null(private$pvt_region_labels)) {
           slc_labels <- lapply(private$pvt_region_labels, function(ll) {
             ll$data <- slice_df$slice_labels[[i]][[ll$image]]
@@ -369,12 +388,13 @@ ggbrain_plot <- R6::R6Class(
     #' @description return a plot of all panels as a patchwork object
     #' @param guides Passes through to patchwork::plot_layout to control how legends are combined across plots. The default
     #'   is "collect", which collects legends within a given nesting level (removes duplicates).
-    plot = function(guides = "collect") {
+    #' @param ... additional arguments. Not used currently   
+    plot = function(guides = "collect", ...) {
       checkmate::assert_string(guides)
       checkmate::assert_subset(guides, c("collect", "keep", "auto"))
 
       # extract ggplot objects from panels and plot with patchwork wrap_plots
-      patchwork::wrap_plots(lapply(private$pvt_ggbrain_panels, function(x) x$gg)) +
+      pp <- patchwork::wrap_plots(lapply(private$pvt_ggbrain_panels, function(x) x$gg)) +
         patchwork::plot_layout(guides=guides) +
         patchwork::plot_annotation(
           title = private$pvt_title,
@@ -383,17 +403,9 @@ ggbrain_plot <- R6::R6Class(
             plot.title = ggplot2::element_text(hjust = 0.5, vjust = 0, size = 1.4*private$pvt_base_size, color = private$pvt_text_color)
           )
         )
-
-      #& theme(plot.background = ggplot2::element_rect(fill = "blue", color = NA))
-
-      # only cowplot::ggdraw produces the expected result here... with the green border that fill the plotting space
-      #png("test.png")
-      #cowplot::ggdraw(a) + theme(plot.background = element_rect(fill = "green", colour = NA)) # plot(a)
-      #plot(a) + theme(plot.background = element_rect(fill = "green", colour = NA)) # plot(a)
-      #cowplot::as_grob(a) + theme(plot.background = element_rect(fill = "green", colour = NA)) # plot(a)
-      #dev.off()
-
-      #bg <- calc_element("plot.background", plot_theme(plot))$fill
+      
+      class(pp) <- c("ggbrain_patchwork", class(pp)) # add ggbrain_patchwork class so that S3 plot method properly captures these objects
+      return(invisible(pp))
     }
   )
 )

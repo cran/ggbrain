@@ -41,7 +41,7 @@ to the fill color of the squares at each spatial position. For labeled data, you
 
 \item{breaks}{if provided, a function to draw the breaks on the fill scale}
 
-\item{show_legend}{if TRUE, show the fill scale in the plot legend}
+\item{show_legend}{if TRUE, show the fill scale in the plot legend. Default is TRUE, except when `name="underlay"``}
 
 \item{interpolate}{passes to geom_raster and controls whether the fill is interpolated over continuous space}
 
@@ -61,7 +61,7 @@ to display. Specks are small clusters that may be distracting and contribute to 
 \item{trim_threads}{the minimum number of neighboring pixels (including diagonals) that must be present to keep a pixel.}
 }
 \value{
-a ggb object populated with the relevant geom_brainand the action of 'add_layers'
+a ggb object populated with the relevant geom_brain and the action of 'add_layers'
 }
 \description{
 Adds a raster layer to the ggbrain plot, displaying pixels from the specified layer definition
@@ -74,11 +74,11 @@ created using the typical + scale_fill_* syntax, and similarly for scale limits.
 }
 \examples{
   # T1-weighted template
-  t1 <- system.file("extdata", "mni_template_2009c_3mm.nii.gz", package = "ggbrain")
+  t1 <- system.file("extdata", "mni_template_2009c_2mm.nii.gz", package = "ggbrain")
 
   # signed reward prediction error map
-  signed_pe <- system.file("extdata", "pe_ptfce_fwep_0.05.nii.gz", package = "ggbrain")
-  
+  signed_pe <- system.file("extdata", "pe_ptfce_fwep_0.05_2mm.nii.gz", package = "ggbrain")
+
   gg_obj <- ggbrain() +
     images(c(underlay = t1, overlay = signed_pe)) +
     slices(c("x = 25\%", "x = 75\%")) +

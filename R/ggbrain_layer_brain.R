@@ -4,6 +4,7 @@
 #'     in typical use of the package. Instead, look at `geom_brain()`.
 #' @importFrom checkmate assert_data_frame assert_class assert_numeric assert_logical
 #' @importFrom ggplot2 scale_fill_gradient scale_fill_distiller .pt aes
+#' @importFrom rlang as_label
 #' @return a `ggbrain_layer_brain` R6 class with fields related to a brain visual layer (relates to `geom_brain`)
 #' @export
 ggbrain_layer_brain <- R6::R6Class(
@@ -44,7 +45,23 @@ ggbrain_layer_brain <- R6::R6Class(
           private$pvt_fill_column <- NULL
           private$pvt_has_fill <- FALSE
         } else {
-          private$pvt_fill_column <- rlang::as_name(value$fill) # pull out the fill column from aes
+          private$pvt_fill_column <- all.vars(value$fill) # pull out the fill column from aes
+          if (length(private$pvt_fill_column) > 1L) stop("Cannot pass multiple columns as a fill mapping")
+
+          # if the user modifies the fill column such as as.factor(), we need to carry through the expression to geom_raster
+          # inside the add_raster method of ggbrain_layer, we use 'new_val' as the column name to plot. Create a glue expression here
+          # that will be evaluated at the time of the add_raster.
+          fill_expr <- rlang::as_label(value$fill)
+          if (fill_expr != private$pvt_fill_column) {
+            private$pvt_fill_expr <- sub(private$pvt_fill_column, "{new_val}", fill_expr, fixed = TRUE)
+            # if user is wrapping column name in factor or as.factor, treat as factor internally
+            # also strip factor conversion from fill expression so that ggplot doesn't relevel the factor inline, undermining unify_scales
+            if (private$pvt_fill_expr == "factor({new_val})" ||
+              private$pvt_fill_expr == "as.factor({new_val})") {
+              private$pvt_categorical_fill <- TRUE
+              private$pvt_fill_expr <- sub("(as.)*factor\\({new_val}\\)", "{new_val}", private$pvt_fill_expr, perl=TRUE)
+            }
+          }
           private$pvt_has_fill <- TRUE
         }
         if (!is.null(value$outline)) {

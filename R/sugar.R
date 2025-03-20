@@ -49,7 +49,7 @@ add_labels <- function(...) {
 #'   or a numeric vector of values to retain. Calls ggbrain_images$filter_image()
 #' @return a `ggb` object with the relevant images and an action of 'add_images'
 #' @examples
-#'   t1 <- system.file("extdata", "mni_template_2009c_3mm.nii.gz", package = "ggbrain")
+#'   t1 <- system.file("extdata", "mni_template_2009c_2mm.nii.gz", package = "ggbrain")
 #'   gg_obj <- ggbrain() +
 #'     images(c(underlay = t1))
 #' @export
@@ -83,7 +83,7 @@ images <- function(images = NULL, volumes = NULL, labels = NULL, filter = NULL) 
 #'   multiple addition operations, as in `slices(c('x=10', 'y=15'), bg_color='white') + slices(c('x=18', 'y=22'), bg_color='black')`.
 #' @return a `ggb` object with the relevant slices and an action of 'add_slices'
 #' @examples
-#'   t1 <- system.file("extdata", "mni_template_2009c_3mm.nii.gz", package = "ggbrain")
+#'   t1 <- system.file("extdata", "mni_template_2009c_2mm.nii.gz", package = "ggbrain")
 #'   gg_obj <- ggbrain() +
 #'     images(c(underlay = t1)) +
 #'     slices(c("x = 25%", "x = 75%"), border_color = "blue")
@@ -115,7 +115,7 @@ slices <- function(coordinates = NULL, title = NULL, bg_color = NULL, text_color
 #'   with the the image coordinate specifications `min_coord` and `max_coord.`
 #' @return a character string containing the slice positions along the requested axis
 #' @examples
-#'   t1 <- system.file("extdata", "mni_template_2009c_3mm.nii.gz", package = "ggbrain")
+#'   t1 <- system.file("extdata", "mni_template_2009c_2mm.nii.gz", package = "ggbrain")
 #'   gg_obj <- ggbrain() +
 #'     images(c(underlay = t1)) +
 #'     slices(montage("sagittal", 15))
@@ -156,41 +156,41 @@ montage <- function(plane = NULL, n = 12, min = 0.1, max = 0.9, min_coord = NULL
 #'
 #' @examples
 #'   # T1-weighted template
-#'   t1 <- system.file("extdata", "mni_template_2009c_3mm.nii.gz", package = "ggbrain")
-#' 
+#'   t1 <- system.file("extdata", "mni_template_2009c_2mm.nii.gz", package = "ggbrain")
+#'
 #'   # signed reward prediction error map
-#'   signed_pe <- system.file("extdata", "pe_ptfce_fwep_0.05.nii.gz", package = "ggbrain")
-#' 
+#'   signed_pe <- system.file("extdata", "pe_ptfce_fwep_0.05_2mm.nii.gz", package = "ggbrain")
+#'
 #'   # unsigned (absolute value) prediction error map
-#'   abspe <- system.file("extdata", "abspe_ptfce_fwep_0.05.nii.gz", package = "ggbrain")
-#' 
+#'   abspe <- system.file("extdata", "abspe_ptfce_fwep_0.05_2mm.nii.gz", package = "ggbrain")
+#'
 #'   # simple example of a difference contrast, separating definition from usage in geom_brain
 #'   gg_obj <- ggbrain() +
 #'     images(c(underlay = t1, signed_pe = signed_pe, abspe = abspe)) +
 #'     slices(c("x = 25%", "x = 75%")) +
 #'     define("signed_gt_abs := signed_pe - abspe") +
 #'     geom_brain("signed_gt_abs")
-#' 
+#'
 #'   # you can also use a named vector in define(), which is equivalent
 #'   gg_obj <- ggbrain() +
 #'     images(c(underlay = t1, signed_pe = signed_pe, abspe = abspe)) +
 #'     slices(c("x = 25%", "x = 75%")) +
 #'     define(c(signed_gt_abs = "signed_pe - abspe")) +
 #'     geom_brain("signed_gt_abs")
-#'     
+#'
 #'   # contrast definitions can also occur inline, yielding equivalent plots
 #'   gg_obj <- ggbrain() +
 #'     images(c(underlay = t1, signed_pe = signed_pe, abspe = abspe)) +
 #'     slices(c("x = 25%", "x = 75%")) +
 #'     geom_brain("signed_pe - abspe")
-#'     
+#'
 #'   # The use of contrasts() is helpful when layers modify the contrast (e.g., subsetting)
 #'   gg_obj <- ggbrain() +
 #'     images(c(underlay = t1, signed_pe = signed_pe, abspe = abspe)) +
 #'     slices(c("x = 25%", "x = 75%")) +
 #'     define(c(signed_gt_abs = "signed_pe - abspe")) +
 #'     geom_brain(
-#'       "signed_gt_abs[signed_gt_abs > 0]", 
+#'       "signed_gt_abs[signed_gt_abs > 0]",
 #'       fill_scale=ggplot2::scale_fill_distiller("Pos diff", palette = "Reds")
 #'     )
 #' @return a `ggb` object with the relevant contrasts and an action of 'add_contrasts'
@@ -216,7 +216,7 @@ define <- function(contrasts = NULL) {
 #'   to the fill color of the squares at each spatial position. For labeled data, you might use \code{aes(fill=<label_col_name>)}.
 #' @param limits if provided, sets the upper and lower bounds on the scale
 #' @param breaks if provided, a function to draw the breaks on the fill scale
-#' @param show_legend if TRUE, show the fill scale in the plot legend
+#' @param show_legend if TRUE, show the fill scale in the plot legend. Default is TRUE, except when `name="underlay"``
 #' @param interpolate passes to geom_raster and controls whether the fill is interpolated over continuous space
 #' @param unify_scales if TRUE, when this layer is reused across panels, unify the scales to match
 #' @param alpha a number between 0 and 1 that sets the alpha transparency of this layer. Default: 1
@@ -232,14 +232,14 @@ define <- function(contrasts = NULL) {
 #'   in order for them to be mapped properly within ggplot. Because we overlay many raster layers in a ggplot
 #'   object that all use the fill aesthetic mapping, it becomes hard to map the color scales after the layer is
 #'   created using the typical + scale_fill_* syntax, and similarly for scale limits.
-#' @return a ggb object populated with the relevant geom_brainand the action of 'add_layers'
+#' @return a ggb object populated with the relevant geom_brain and the action of 'add_layers'
 #' @examples
 #'   # T1-weighted template
-#'   t1 <- system.file("extdata", "mni_template_2009c_3mm.nii.gz", package = "ggbrain")
-#' 
+#'   t1 <- system.file("extdata", "mni_template_2009c_2mm.nii.gz", package = "ggbrain")
+#'
 #'   # signed reward prediction error map
-#'   signed_pe <- system.file("extdata", "pe_ptfce_fwep_0.05.nii.gz", package = "ggbrain")
-#'   
+#'   signed_pe <- system.file("extdata", "pe_ptfce_fwep_0.05_2mm.nii.gz", package = "ggbrain")
+#'
 #'   gg_obj <- ggbrain() +
 #'     images(c(underlay = t1, overlay = signed_pe)) +
 #'     slices(c("x = 25%", "x = 75%")) +
@@ -249,6 +249,9 @@ define <- function(contrasts = NULL) {
 geom_brain <- function(definition = NULL, name = NULL, fill = NULL, fill_scale = NULL, mapping = NULL,
       limits = NULL, breaks = NULL, show_legend = TRUE, interpolate = FALSE, unify_scales=TRUE, alpha = NULL,
       blur_edge = NULL, fill_holes = NULL, remove_specks = NULL, trim_threads = NULL) {
+
+  # if this is the underlay layer and the user did not specify whether they want to show the legend, default to FALSE
+  if (!is.null(definition) && is.character(definition) && definition == "underlay" && missing(show_legend)) show_legend <- FALSE
 
   arglist <- named_list(definition, name, limits, breaks, show_legend, interpolate, unify_scales,
                   alpha, mapping, fill, fill_scale, blur_edge, fill_holes, remove_specks, trim_threads)
@@ -301,34 +304,34 @@ geom_brain <- function(definition = NULL, name = NULL, fill = NULL, fill_scale =
 #' @return a ggb object populated with the geom_outline layer and the action of 'add_layers'
 #' @examples
 #'   # T1-weighted template
-#'   t1 <- system.file("extdata", "mni_template_2009c_3mm.nii.gz", package = "ggbrain")
-#' 
+#'   t1 <- system.file("extdata", "mni_template_2009c_2mm.nii.gz", package = "ggbrain")
+#'
 #'   # signed reward prediction error map
-#'   signed_pe <- system.file("extdata", "pe_ptfce_fwep_0.05.nii.gz", package = "ggbrain")
-#'   
+#'   signed_pe <- system.file("extdata", "pe_ptfce_fwep_0.05_2mm.nii.gz", package = "ggbrain")
+#'
 #'   gg_obj <- ggbrain() +
 #'     images(c(underlay = t1, overlay = signed_pe)) +
 #'     slices(c("x = 25%", "x = 75%")) +
 #'     geom_brain("underlay") +
 #'     geom_outline(definition="overlay[overlay > 2]", outline="cyan")
 #' @export
-geom_outline <- function(definition = NULL, name = NULL, outline = NULL, outline_scale = NULL, 
-      mapping = ggplot2::aes(outline = NULL, fill=NULL), size = NULL, limits = NULL, breaks = integer_breaks(), 
+geom_outline <- function(definition = NULL, name = NULL, outline = NULL, outline_scale = NULL,
+      mapping = ggplot2::aes(outline = NULL, fill=NULL), size = NULL, limits = NULL, breaks = integer_breaks(),
       show_legend = TRUE, interpolate = FALSE, unify_scales=TRUE, alpha = 1.0,
       blur_edge = NULL, fill_holes = NULL, remove_specks = NULL, trim_threads = NULL, dil_ero = 0L) {
-  
+
   arglist <- named_list(definition, name, limits, breaks, show_legend, interpolate, unify_scales,
                         alpha, mapping, outline, outline_scale, size, blur_edge, fill_holes, remove_specks, trim_threads, dil_ero)
-  
+
   # only pass through non-NULLs so that default arguments of layer are used when no input is provided
   arglist <- arglist[!sapply(arglist, is.null)]
-  
+
   # this generates problems because it overrides default arguments of layer class
   # l_obj <- ggbrain_layer_outline$new(
   #   name, definition, limits, breaks, show_legend, interpolate, unify_scales,
   #   alpha, mapping, outline, outline_scale, size, blur_edge, fill_holes, remove_specks, trim_threads
   # )
-  
+
   l_obj <- do.call(ggbrain_layer_outline$new, arglist)
 
   ggb$new(layers = l_obj, action = "add_layers")
@@ -383,21 +386,23 @@ geom_region_label_repel <- function(image, label_column = "label", min_px=1L, ..
 }
 
 #' Adds custom annotations to a single panel on the ggbrain plot
-#' @param x the x position of the annotation. If numeric, it is assumed to be the pixel position along the x axis (e.g., 26).
-#'   In addition, convenience values of 'left', 'right', or \code{'q[1-100]'} can be used to look up the left-most, right-most, or quantile-based
-#'   positions along the x axis.
-#' @param y the y position of the annotation. If numeric, it is assumed to be the pixel position along the y axis (e.g., 26).
-#'   In addition, convenience values of 'left', 'right', or \code{'q[1-100]'} can be used to look up the left-most, right-most, or quantile-based
-#'   positions along the x axis.
 #' @param slice_index the slice number to which this annotation is added. These are numbered in the wrapping order from
 #'   patchwork::wrap_plots, which will normally go from top-left to bottom-right.
 #' @param ... Additional parameters passed to ggplot2::annotate such as \code{label} or \code{geom}
-#' @details Note that this only handles a single annotation on a single panel!
+#' @details 
+#'   For annotation coordinates such as `x`, `y`, or `xmin`, you may pass in a number. In this case, the value specifies the pixel
+#'     position along the relevant axis (e.g., `x=26`). In addition, convenience values of 'left', 'right', and 'middle' can be used
+#'     for the x axis, and 'top', 'bottom', and 'middle' for the y axis.
+#' 
+#'   Finally, or \code{'q[1-100]'} can be used to look up the quantile-based positions along the relevant axis. For example,
+#'     `x="q25"` would position the annotation at the 25% mark along the x axis.
+#' 
+#'   N.B. This function only adds a single annotation on a single panel!
 #' @return a `ggb` object with the relevant annotations field and an action of "add_annotations"
 #' @export
-annotate_panel <- function(x = "middle", y = "middle", slice_index=NULL, ...) {
+annotate_slice <- function(slice_index=NULL, ...) {
   checkmate::assert_number(slice_index, lower=1)
-  ggb$new(annotations = list(list(x = x, y = y, slice_index=slice_index, ...)), action = "add_annotations")
+  ggb$new(annotations = list(list(slice_index=slice_index, ...)), action = "add_annotations")
 }
 
 #' Adds the coordinate labels to each panel based on the location of the slice along the slicing axis (e.g., z = 15)
@@ -415,10 +420,43 @@ annotate_coordinates <- function(x="right", y="bottom", ...) {
 }
 
 #' Function to convert `ggb` object to ggplot/patchwork object
-#' @return a `ggb` object with the action 'render', used in a `ggbrain` addition chain
+#' @param x optional. A `ggb` object to be rendered into a `ggbrain_patchwork object`.
+#' @param ... additional arguments passed to the $render method of `x`.
+#' @return a `ggbrain_patchwork` object of the rendered ggbrain plot
+#' @details
+#'   If no `x` argument is passed in, this function can be used in a ggbrain addition chain to render a plot
+#'   to a ggplot-friendly object before additional ggplot or patchwork calls are added such as `theme()`.
+#'   
+#'   Or if `x` is passed in as an argument, return the rendered plot as a `ggbrain_patchwork` object.
+#' 
+#' @examples
+#'   t1 <- system.file("extdata", "mni_template_2009c_2mm.nii.gz", package = "ggbrain")
+#'   
+#'   # version where render is added to the object in a ggplot-style chain
+#'   gg_obj <- ggbrain() +
+#'     images(c(underlay = t1)) + 
+#'     slices(c("x = 25%", "x = 75%")) +
+#'     geom_brain("underlay") + 
+#'     render() + # convert to ggplot-friendly object
+#'     ggplot2::theme(text=ggplot2::element_text(family="Serif"))
+#'     
+#'  # version where a ggbrain object is created in one step, then rendered in another
+#'  brain_obj <- ggbrain() +
+#'     images(c(underlay = t1)) + 
+#'     slices(c("x = 25%", "x = 75%")) +
+#'     geom_brain("underlay")
+#'     
+#'  gg_obj <- render(brain_obj) + patchwork::plot_annotation(title="Overall title")
+#'  
 #' @export
-render <- function() {
-  ggb$new(action = "render")
+render <- function(x, ...) {
+  if (missing(x)) {
+    ggb$new(action = "render")
+  } else {
+    if (!inherits(x, "ggb")) stop("Must pass a ggbrain object to render")
+    UseMethod("render") # pass to S3
+  }
+  
 }
 
 #' little helper function to create named list from objects
@@ -470,4 +508,18 @@ scale_fill_bisided <- function(
   # hack package into tolerating made up scale object
   class(ret) <- c("list", "ScaleContinuous", "ScaleBisided", "Scale") # ggproto and gg classes lead to errors in print method
   return(ret)
+}
+
+# internal function to split <name> := <value> contrast syntax into list
+contrast_split <- function(x, no_name="") {
+  xsplit <- strsplit(x, ":=", fixed = TRUE)[[1L]]
+  if (length(xsplit) == 2L) {
+    con_name <- trimws(xsplit[1L])
+    con_val <- trimws(xsplit[2L])
+  } else {
+    con_name <- no_name
+    con_val <- x
+  }
+
+  return(list(name = con_name, value=con_val))
 }
