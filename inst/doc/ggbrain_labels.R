@@ -55,8 +55,8 @@ gg_obj <- ggbrain() +
 
 plot(gg_obj)
 
-## -----------------------------------------------------------------------------
-knitr::kable(head(schaefer200_atlas_labels, n=10))
+## ----echo=FALSE---------------------------------------------------------------
+knitr::kable(head(schaefer200_atlas_labels, select(roi_num, hemi, x, y, z, network, MNI_Glasser_HCP_v1.0), n=6))
 
 ## -----------------------------------------------------------------------------
 schaefer200_atlas_labels <- schaefer200_atlas_labels %>%
@@ -186,9 +186,9 @@ ann <- abspe_gg +
 plot(ann)
 
 
-## ----fig.height=4, fig.width=7------------------------------------------------
+## ----echo=FALSE---------------------------------------------------------------
 knitr::kable(schaefer200_atlas_labels %>%
-  filter(!is.na(custom_label)) %>% select(c(MNI_Glasser_HCP_v1.0, custom_label)))
+  filter(!is.na(custom_label)) %>% select(c(MNI_Glasser_HCP_v1.0, custom_label))) %>% head(n=6)
 
 ## ----fig.height=4, fig.width=7------------------------------------------------
 ann <- abspe_gg +
